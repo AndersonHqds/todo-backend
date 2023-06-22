@@ -2,6 +2,7 @@ import express from "express";
 import fs from "fs";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import cors from "cors"
 
 type User = {
   username: string;
@@ -22,6 +23,7 @@ const UserModel = mongoose.model("UserAccount", UserAccount);
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 app.get("/accounts", async (req, res) => {
   const accounts = await UserModel.find({});
