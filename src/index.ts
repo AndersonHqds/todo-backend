@@ -37,7 +37,7 @@ app.post("/login", async (req, res) => {
   const user: User[] = await UserModel.find({ username }).exec() as unknown as User[];
   if (user && bcrypt.compareSync(password, user[0].password)) {
     const token = jwt.sign({ username, id: user[0]._id }, "@4Bck7AH$3^o")
-    return res.send({ token })
+    return res.send({ token: `bearer ${token}` })
   }
   return res.send("User or password is invalid");
 })
@@ -51,7 +51,30 @@ app.post("/signup", async (req, res) => {
   await UserModel.create({ username, password: hash });
   res.send("Account created!");
 });
+const isUserAuthenticatedMiddleware = (req: any, res: any, next: any) => {
+  const token = req.headers.token;
+  if (!token) {
+    return res.status(400).send("You need to provide the token header")
+  }
+  try {
+    jwt.verify(token.split(" ")[1], "@4Bck7AH$3^o")
+    next()
+  }
+  catch (error) {
+    return res.status(401).send("Unauthorized")
+  }
 
+
+}
+app.post("/todo", isUserAuthenticatedMiddleware, (req, res) => {
+  const { content } = req.body;
+  if (content.trim().length === 0) {
+    return res.status(400).send("The data  is not regulized");
+  }
+
+
+}
+)
 app.listen("3001", () => {
   console.log("Listening on port 3001");
 });
