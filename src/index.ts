@@ -20,7 +20,15 @@ const UserAccount = new mongoose.Schema({
   password: String,
 });
 
+const Todo = new mongoose.Schema({
+  content: String,
+  userId: String,
+  status: Boolean
+})
+
 const UserModel = mongoose.model("UserAccount", UserAccount);
+
+const TodoModel = mongoose.model("Todo", Todo)
 
 const app = express();
 app.use(express.json());
@@ -35,11 +43,12 @@ app.get("/accounts", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const user: User[] = await UserModel.find({ username }).exec() as unknown as User[];
-  if (user && bcrypt.compareSync(password, user[0].password)) {
+  console.log({user});
+  if (user && user.length > 0 &&  bcrypt.compareSync(password, user[0].password)) {
     const token = jwt.sign({ username, id: user[0]._id }, "@4Bck7AH$3^o")
     return res.send({ token: `bearer ${token}` })
   }
-  return res.send("User or password is invalid");
+  return res.status(400).send("User or password is invalid");
 })
 
 app.post("/signup", async (req, res) => {
@@ -66,15 +75,35 @@ const isUserAuthenticatedMiddleware = (req: any, res: any, next: any) => {
 
 
 }
-app.post("/todo", isUserAuthenticatedMiddleware, (req, res) => {
+app.post("/todo", isUserAuthenticatedMiddleware, async (req, res) => {
   const { content } = req.body;
-  if (content.trim().length === 0) {
+  const token = (req.headers as any).token;
+  const tokenDecoded = jwt.decode(token.split(" ")[1]) as any;
+  console.log(tokenDecoded)
+  if (!content || content?.trim().length === 0) {
     return res.status(400).send("The data  is not regulized");
   }
+  await TodoModel.create({content: content, userId: tokenDecoded.id , status: false });
+  return res.status(201).send("Todo was created")
+})
 
 
-}
-)
+
+
+app.get("/todo", isUserAuthenticatedMiddleware, async (req, res) => {
+  try {
+    const token = (req.headers as any).token;
+    const tokenDecoded = jwt.decode(token.split(" ")[1]) as any;
+    const todos = await TodoModel.find({ userId: tokenDecoded.id }).exec();
+    console.log(todos);
+    res.json(todos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+});
+
+
 app.listen("3001", () => {
   console.log("Listening on port 3001");
 });
