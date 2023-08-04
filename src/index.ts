@@ -95,13 +95,33 @@ app.get("/todo", isUserAuthenticatedMiddleware, async (req, res) => {
     const token = (req.headers as any).token;
     const tokenDecoded = jwt.decode(token.split(" ")[1]) as any;
     const todos = await TodoModel.find({ userId: tokenDecoded.id }).exec();
-    console.log(todos);
     res.json(todos);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");
   }
 });
+
+app.patch("/todo", isUserAuthenticatedMiddleware, async (req, res) => {
+  try {
+    const { id, status } = req.body;
+    const token = (req.headers as any).token;
+    const tokenDecoded = jwt.decode(token.split(" ")[1]) as any;
+    const todo = await TodoModel.findById(id).exec() as any;
+    if (!id || status === undefined || typeof status !== "boolean") {
+      return res.status(400).send(" You should provide an id and a boolean status");
+    }
+    if (todo.userId !== tokenDecoded.id){
+      return res.status(403).send("You don't have permission to update that");
+    }
+    await TodoModel.findByIdAndUpdate(todo?._id, {$set: {status: status}} )
+    return res.status(200).send("Updated");
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+})
 
 
 app.listen("3001", () => {
